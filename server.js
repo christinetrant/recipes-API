@@ -26,10 +26,12 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.listen(3000, () => {
+  console.log('app is running on Port 3000');
+});
+
 // Home - select recipes and show by last entered
 app.get('/', (req, res) => {
-  // console.log(req.params);
-  // res.send('this is working');
   // return res.send(database.recipes);
   // check if database is empty:
   // select count(1) where exists (select * from recipe)
@@ -43,38 +45,6 @@ app.get('/', (req, res) => {
       .orderBy('recipe_id', 'desc')
       .then(recipes => res.send(recipes))
   );
-});
-
-// // to delete:
-app.delete('/:id', (req, res) => {
-  console.log('params', req.params);
-  console.log('body', req.body);
-  // need recipe id to delete the right recipe
-  const { id } = req.params;
-
-  db('recipe')
-    .where('recipe_id', '=', id)
-    .del()
-    // .returning('recipe')
-    // .then(data => {
-    //   // console.log(entries[0]);
-    //   res.json(data);
-    // })
-    .catch(err => res.status(400).json('Unable to delete'));
-
-  // Once deleted we want to get the updated db and return
-  db.whereExists(db.select('*').from('recipe').whereRaw('count(1)'));
-  // want to return database of all recipes:
-  return db
-    .select('*')
-    .from('recipe')
-    .orderBy('recipe_id', 'desc')
-    .then(recipes => res.send(recipes));
-  // return db('recipe');
-});
-
-app.listen(3000, () => {
-  console.log('app is running on Port 3000');
 });
 
 // When user creates a new recipe - input into database and return to website
@@ -133,6 +103,52 @@ app.post('/create', (req, res) => {
   return db('recipe');
 });
 
+// // to delete:
+app.delete('/:id', (req, res) => {
+  console.log('params', req.params);
+  // console.log('body', req.body);
+  // need recipe id to delete the right recipe
+  const { id } = req.params;
+
+  // db('recipe')
+  //   .where('recipe_id', '=', id)
+  //   .del()
+  //   // .returning('recipe')
+  //   // .then(data => {
+  //   //   // console.log(entries[0]);
+  //   //   res.json(data);
+  //   // })
+  //   .catch(err => res.status(400).json('Unable to delete'));
+
+  // // Once deleted we want to get the updated db and return
+  // db.whereExists(db.select('*').from('recipe').whereRaw('count(1)'));
+  // // want to return database of all recipes:
+  // return db
+  //   .select('*')
+  //   .from('recipe')
+  //   .orderBy('recipe_id', 'desc')
+  //   .then(recipes => res.send(recipes));
+
+  db.transaction(trx => {
+    trx('recipe')
+      .where('recipe_id', '=', id)
+      .del()
+      .returning('*')
+      .then(() => console.log('deleted'))
+      .catch(err => res.status(400).json('Unable to delete'))
+      .then(trx.commit)
+      .catch(trx.rollback);
+  }).then(() => {
+    // Once deleted we want to get the updated db and return
+    db.whereExists(db.select('*').from('recipe').whereRaw('count(1)'));
+    // want to return database of all recipes:
+    return db
+      .select('*')
+      .from('recipe')
+      .orderBy('recipe_id', 'desc')
+      .then(recipes => res.send(recipes));
+  });
+});
 // recipes - edit PUT update recipe info?
 
 /**
