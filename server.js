@@ -190,6 +190,7 @@ app.post('/create', (req, res) => {
           res.status(400).json('Not found');
         }
       })
+      .then(recipes => res.send(recipes))
       .then(trx.commit)
       .catch(trx.rollback);
   });
