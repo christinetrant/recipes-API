@@ -134,20 +134,18 @@ app.delete('/:id', (req, res) => {
       .where('recipe_id', '=', id)
       .del()
       .returning('*')
-      .then(() => console.log('deleted'))
+      // .then(() => console.log('deleted'))
+      // Once deleted we want to get the updated db and return
+      .then(
+        trx.whereExists(trx.select('*').from('recipe').whereRaw('count(1)'))
+      )
+      .then(recipes => res.send(recipes))
       .catch(err => res.status(400).json('Unable to delete'))
       .then(trx.commit)
       .catch(trx.rollback);
-  }).then(() => {
-    // Once deleted we want to get the updated db and return
-    db.whereExists(db.select('*').from('recipe').whereRaw('count(1)'));
-    // want to return database of all recipes:
-    return db
-      .select('*')
-      .from('recipe')
-      .orderBy('recipe_id', 'desc')
-      .then(recipes => res.send(recipes));
   });
+  // want to return database of all recipes:
+  return db.select('*').from('recipe').orderBy('recipe_id', 'desc');
 });
 // recipes - edit PUT update recipe info?
 
